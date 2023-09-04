@@ -32,17 +32,14 @@ class RedisClient {
     return this.isConnected;
   }
 
-  
   set(key, value, expiry) {
     this.asyncSetX(key, expiry, value);
   }
 
-  
   get(key) {
     return this.asyncGet(key);
   }
 
-  
   del(key) {
     return this.asyncDel(key);
   }
