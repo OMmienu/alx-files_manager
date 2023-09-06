@@ -1,71 +1,40 @@
-import { MongoClient, ObjectId } from 'mongodb';
-import sha1 from 'sha1';
+const { MongoClient } = require('mongodb');
 
-const DB_HOST = process.env.DB_HOST || 'localhost';
-const DB_PORT = process.env.DB_PORT || 27017;
-const DB_DATABASE = process.env.DB_DATABASE || 'files_manager';
+const host = process.env.DB_HOST || 'localhost';
+const port = process.env.DB_PORT || '27017';
+const database = process.env.DB_DATABASE || 'files_manager';
+const url = `mongodb://${host}:${port}`;
 
-/**
- * A MongoDB Client Class
- */
 class DBClient {
   constructor() {
-    this.client = new MongoClient(
-      `mongodb://${DB_HOST}:${DB_PORT}/${DB_DATABASE}`,
-    );
-    this.isConnected = false;
-    this.db = null;
-    this.client.connect((err) => {
-      if (!err) {
-        this.isConnected = true;
-        this.db = this.client.db(DB_DATABASE);
+    const client = MongoClient(url);
+    client.connect((error) => {
+      if (error) {
+        console.log('Error:', error);
+      } else {
+        this.db = client.db(database);
       }
     });
   }
 
-  /**
-   * Checks if the mongoDb client is alive.
-   *
-   * @return {boolean} The connection status of the mongoDb.
-   */
   isAlive() {
-    return this.isConnected;
+    if (this.db) {
+      return true;
+    }
+    return false;
   }
 
   async nbUsers() {
-    return this.db.collection('users').countDocuments();
+    const users = this.db.collection('users');
+    const resp = await users.find({}).toArray();
+    return resp.length;
   }
 
   async nbFiles() {
-    return this.db.collection('files').countDocuments();
-  }
-
-  filesCollection() {
-    return this.db.collection('files');
-  }
-
-  findUserByEmail(email) {
-    return this.db.collection('users').findOne({ email });
-  }
-
-  findUserById(userId) {
-    return this.db.collection('users').findOne({ _id: ObjectId(userId) });
-  }
-
-  async addUser(email, password) {
-    const hashedPassword = sha1(password);
-    const result = await this.db.collection('users').insertOne(
-      {
-        email,
-        password: hashedPassword,
-      },
-    );
-    return {
-      email: result.ops[0].email,
-      id: result.ops[0]._id,
-    };
+    const files = this.db.collection('files');
+    const resp = await files.find({}).toArray();
+    return resp.length;
   }
 }
 
-const dBClient = new DBClient();
-export default dBClient;
+export default new DBClient();

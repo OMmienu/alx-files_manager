@@ -1,49 +1,36 @@
 import { createClient } from 'redis';
 import { promisify } from 'util';
 
-/**
- * A Redis client class that can be used to interact with Redis.
- */
 class RedisClient {
   constructor() {
     this.client = createClient();
-    this.isConnected = false;
-
-    this.client.on('error', (err) => {
-      console.log('Redis Client Error', err);
+    this.alive = true;
+    this.client.on('error', (error) => {
+      console.log(error);
+      this.alive = false;
     });
-
-    this.client.on('connect', () => {
-      this.isConnected = true;
+    this.client.get = promisify(this.client.get).bind(this.client);
+    this.client.set = promisify(this.client.set).bind(this.client);
+    this.client.once('ready', () => {
+      this.alive = true;
     });
-
-    this.asyncSetX = promisify(this.client.setex).bind(this.client);
-    this.asyncGet = promisify(this.client.get).bind(this.client);
-    this.asyncDel = promisify(this.client.del).bind(this.client);
-    this.asyncExpire = promisify(this.client.expire).bind(this.client);
   }
 
-  /**
-   * Determines if the client is alive by pinging it.
-   *
-   * @return {boolean} Returns true if the client is alive, false otherwise.
-   */
   isAlive() {
-    return this.isConnected;
+    return this.alive;
   }
 
-  set(key, value, expiry) {
-    this.asyncSetX(key, expiry, value);
+  async get(key) {
+    return this.client.get(key);
   }
 
-  get(key) {
-    return this.asyncGet(key);
+  async set(key, value, duration) {
+    this.client.set(key, value, 'EX', duration);
   }
 
-  del(key) {
-    return this.asyncDel(key);
+  async del(key) {
+    return this.client.del(key);
   }
 }
 
-const redisClient = new RedisClient();
-export default redisClient;
+export default new RedisClient();
